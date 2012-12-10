@@ -1,0 +1,76 @@
+0: LD 6,0(0) * gp,0(ac)
+1: LDA 4,-4(6) * sp, num of declarations (gp)
+2: LDC 2,1(0) * ac2 = 1
+* ----Input----
+3: IN 0,0,0
+4: ST 0,0(6) * Assignment
+* Compute Constant
+5: LDC 0,0(0) * ac = constant
+6: ST 0,-2(6) * Assignment
+* Compute Constant
+7: LDC 0,1(0) * ac = constant
+8: ST 0,-3(6) * Assignment
+* Compute n
+9: LD 0,0(6) * ac = n
+* Save Left Operand
+10: ST 0,0(4) * tmp = ac
+11: SUB 4,4,2 * sp --
+* Compute Constant
+12: LDC 0,0(0) * ac = constant
+* Retrieve Left Operand
+13: ADD 4,4,2 * sp ++
+14: LD 1,0(4) * ac1 = tmp
+15: SUB 0,1,0 * ac = ac1 - ac
+16: JGT 0,2(7) * true case
+17: LDC 0,0(3) * load false
+18: LDA 7,1(7) * skip true
+19: LDC 0,1(3) * load true
+20: JEQ 0,48(3) * Jump if false
+* Compute fib0
+21: LD 0,-2(6) * ac = fib0
+22: ST 0,-4(6) * Assignment
+* Compute temp
+23: LD 0,-4(6) * ac = temp
+* Output temp
+24: OUT 0,0,0
+* Compute fib1
+25: LD 0,-3(6) * ac = fib1
+26: ST 0,-2(6) * Assignment
+* Compute fib0
+27: LD 0,-2(6) * ac = fib0
+* Output fib0
+28: OUT 0,0,0
+* Compute fib0
+29: LD 0,-2(6) * ac = fib0
+* Save Left Operand
+30: ST 0,0(4) * tmp = ac
+31: SUB 4,4,2 * sp --
+* Compute temp
+32: LD 0,-4(6) * ac = temp
+* Retrieve Left Operand
+33: ADD 4,4,2 * sp ++
+34: LD 1,0(4) * ac1 = tmp
+35: ADD 0,1,0 * ac = ac1 + ac
+36: ST 0,-3(6) * Assignment
+* Compute fib1
+37: LD 0,-3(6) * ac = fib1
+* Output fib1
+38: OUT 0,0,0
+* Compute n
+39: LD 0,0(6) * ac = n
+* Save Left Operand
+40: ST 0,0(4) * tmp = ac
+41: SUB 4,4,2 * sp --
+* Compute Constant
+42: LDC 0,1(0) * ac = constant
+* Retrieve Left Operand
+43: ADD 4,4,2 * sp ++
+44: LD 1,0(4) * ac1 = tmp
+45: SUB 0,1,0 * ac = ac1 - ac
+46: ST 0,0(6) * Assignment
+47: LDC 7,9(3) * Jump back to While comparison
+* Compute n
+48: LD 0,0(6) * ac = n
+* Output n
+49: OUT 0,0,0
+50: HALT 0,0,0

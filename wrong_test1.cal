@@ -1,0 +1,9 @@
+int b;
+b=2;
+while(true && b<10){
+	b = b + 1;
+	if(b == 20)
+		break;
+}
+break;
+$b;

@@ -1,0 +1,55 @@
+Read me.
+-Haojian Jin	haojian.jin@gmail.com
+
+This calculator project was developed on Mac OS X Mountain Lion, and compiled with g++.
+Please let me know if there is any problem in compiling.
+
+
+---------------------------------------
+Usage command:
+make clean
+make
+./calculator <test.cal
+./calculator <test.cal >out.bin
+./ibm out.bin
+g
+-----------------------------------------
+
+The basic grammar in this compiler is as follows:
+
+/*  Grammer Definition:
+ *  factor ::= ID | NUM | - factor | (expr);
+ *  term   :: = factor | factor mulop term;
+ *  expr   :: = term | term addop expr | inputexp;
+ *
+ */
+
+
+
+------------------------------------------
+A sample test calculator program was in test.cal.
+
+Here is a copy of that program, which should cover all the possible case in the requirement.:
+
+%jfeijf
+
+int ab;
+int b;
+int abc;
+int bde;
+int bd;
+int eg;
+%int bd; % to check the multiply declared variables
+%fhfueh
+b=2+3*4;;;;;;;;;;;;;;
+;;;;
+ab=122; %ffeijfieji
+;;;;
+abc =2;
+bde=5;
+bd = input();
+$ab+b + abc*(bde +5)*bd;
+eg =33+ 3 * -3+5;
+$eg;
+
+

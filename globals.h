@@ -22,6 +22,8 @@
 #define IFSELECTION   273
 #define ITERATION   274
 #define BEXPR   275
+#define LETNODE   276
+#define FUNCNODE   277
 
 
 #define OPLESSEQ 280
@@ -32,6 +34,7 @@
 #define OPNOTEQ 285
 #define OPAND  286
 #define OPNOT  287
+#define OPRETURN  288
 
 #define LBRKT  290
 #define RBRKT  291
@@ -44,16 +47,25 @@
 #define KEYWORD_BREAK   305
 #define KEYWORD_TRUE   306
 #define KEYWORD_FALSE   307
+#define KEYWORD_FUNDEF   308
+#define KEYWORD_LET   309
+#define KEYWORD_IN   310
+#define KEYWORD_END   311
+#define KEYWORD_COMMA   312
+#define KEYWORD_FN   313
 
 #define DATATYPE_INT 320
 #define DATATYPE_BOOL 321
-
+#define DATATYPE_FUNC 322
+#define DATATYPE_UNKOWN 323
 
 #define MAX_REG 3
 #define REG_SP 6
 
 #include <string.h>
 #include <iostream>
+#include <vector>
+
 
 #define MAXIDLENGTH 256
 #define HASH_TABLE_SIZE 100
@@ -76,10 +88,15 @@ typedef struct treeNode {
     int op;
     int val;
     char id[MAXIDLENGTH];
-	int type; // 0 means int, and 1 means bool.
-	//bucket *st_hash[HASH_TABLE_SIZE];
+	int type; // 0 means int, and 1 means bool, 2 means function.
 	int st_hash_index;
 } TreeNode;
+
+typedef struct functionType{
+	std::vector<int> parameterstype;
+ 	int returnvaltype;
+	string typeString;
+} FunctionType;
 
 #define ST_SIZE 26
 
@@ -100,6 +117,7 @@ typedef struct _bucket{
 	int addr;
 	struct _bucket *next;
 	int type;
+	struct functionType *infer_type;
 	} bucket;
 
 typedef struct _STLinkedNode{

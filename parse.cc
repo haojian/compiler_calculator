@@ -20,6 +20,7 @@ int ifInIteration = 0;
 /* Function newExpNode creates a new expression 
  * node for syntax tree construction
  */
+
 TreeNode * newNodeWithOp(int op) {
   TreeNode * t = (TreeNode *) malloc(sizeof(TreeNode));
   int i;
@@ -63,7 +64,8 @@ TreeNode * exp(void);
 TreeNode *block(void);
 TreeNode *comparison(void);
 TreeNode *statement(void);
-
+TreeNode *assign_stmt(void);
+TreeNode *selection(void);
 
 int relop(){
 	int op = OPEQ;
@@ -215,33 +217,6 @@ TreeNode *comparison(){
 	return current_node;
 }
 
-/*
-TreeNode *bexp_general_prime(TreeNode *parent){
-	if((token.TokenClass == OPAND)){
-		TreeNode *p = newNode(token);
-		advance(token.TokenClass);
-		p->op = IFSELECTION;
-		if(p!= NULL){
-			p->child[0] = comparison();
-			p->child[1] = 
-		}
-	}
-	
-	if((token.TokenClass==OPAND)){
-			TreeNode *p = newNode(token);
-			advance(token.TokenClass);
-			p->op = IFSELECTION;
-			if(p != NULL){
-				p->child[0] = left;
-				p->child[1] = exp_general();
-			}
-			return bexp_general_prime(p);
-		}
-	else
-		return left;
-}
-*/
-
 
 TreeNode * bexpr(bool);
 
@@ -260,6 +235,48 @@ TreeNode * bexpr_prime(TreeNode * left, bool inParen) {
     }
   }
   else return left;
+}
+
+TreeNode *getParameters(){
+	TreeNode * t = NULL;
+	t = bexpr(true);
+	TreeNode * tmp = t;
+	while(token.TokenClass == KEYWORD_COMMA){
+		advance(token.TokenClass);
+		tmp->sibling = bexpr(true);
+		tmp = tmp->sibling;
+	}
+	return t;
+}
+
+TreeNode *getFuncDef(){
+	TreeNode * t = newNodeWithOp(FUNCNODE);
+	//t->type = 2;
+	advance(KEYWORD_FN); 
+	advance(LPAREN);
+	t->child[0] = getParameters();
+	advance(RPAREN);
+	advance(OPRETURN);
+	t->child[1] = bexpr(true);
+	return t;
+}
+
+TreeNode *getLet(){
+	TreeNode * current_node = newNodeWithOp(LETNODE);
+	advance(KEYWORD_LET);
+	current_node->child[0] = assign_stmt();
+	advance(KEYWORD_IN);
+	current_node->child[1] = bexpr(true);
+	advance(KEYWORD_END);
+	return current_node;
+}
+
+
+TreeNode *getFuncCall(TreeNode * funcNode){
+	funcNode->type = DATATYPE_FUNC;
+	advance(LPAREN);
+	funcNode->child[0] = getParameters();
+	advance(RPAREN);
 }
 
 
@@ -357,6 +374,13 @@ TreeNode * bexpr(bool inParen) { // initial value of inParen is false
       t = exp_prime(t);
     }
 
+	//deal with call
+	if (token.TokenClass == LPAREN){
+		inExpr = 2;
+		t = getFuncCall(t);
+		return t;
+	}
+
     if (token.TokenClass == OPLESSEQ 
 		|| token.TokenClass == OPGREATEREQ
 		|| token.TokenClass == OPEQ
@@ -385,6 +409,18 @@ TreeNode * bexpr(bool inParen) { // initial value of inParen is false
 
     o = bexpr_prime(o,false);
     break;
+  case KEYWORD_LET:
+	t = getLet();
+	return t;
+	break;
+  case KEYWORD_FN:
+	t = getFuncDef();
+	return t;
+	break;
+  case KEYWORD_IF:
+	t = selection(); 
+	return t;
+	break;
   case LPAREN :
     advance(LPAREN);
     t = bexpr(true);
@@ -431,112 +467,6 @@ TreeNode * bexpr(bool inParen) { // initial value of inParen is false
   return o;
 }
 
-
-/*
-TreeNode *processBexprRegular(TreeNode *topNode){
-	TreeNode *topNode_Copy = NULL;
-	TreeNode *trueNode = newNodeWithOp(NUMBER);
-	trueNode->val = 1;
-	TreeNode *falseNode = newNodeWithOp(NUMBER);
-	falseNode->val = 0;
-	
-	memcpy(&topNode_Copy,&topNode, sizeof(TreeNode)); 
-	topNode->op = IFSELECTION;
-	topNode->child[0] = comparison(0);
-	TreeNode *tmpNode = topNode;
-	while(token.TokenClass == OPAND){
-		TreeNode *p = newNodeWithOp(IFSELECTION);
-		advance(token.TokenClass);
-		if(p!= NULL){
-			p->child[0] = comparison();
-			tmpNode->child[1] = p;
-			tmpNode->child[2] = topNode_Copy;
-			topNode_Copy->child[0] = falseNode;
-			tmpNode = tmpNode->child[1];
-		}
-	}
-	tmpNode->child[1] = topNode_Copy;
-	topNode_Copy->child[0] = trueNode;
-}
-
-void *processGeneralExprRegular(TreeNode *topNode){
-	TreeNode *topNode_Copy = NULL;
-	TreeNode *trueNode = newNodeWithOp(NUMBER);
-	trueNode->val = 1;
-	TreeNode *falseNode = newNodeWithOp(NUMBER);
-	falseNode->val = 0;
-	memcpy(&topNode_Copy,&topNode, sizeof(TreeNode)); 
-	
-	TreeNode *exprNode_1st = exp();
-	int op = relop();
-	if(op != -1){
-		//this is bexpr
-	}
-	else if((token.TokenClass == ID && token.type == 1) || token.TokenClass == KEYWORD_TRUE || token.TokenClass == KEYWORD_FALSE){
-		//this is bexpr
-	}
-	else{
-		//this is normal expr;
-		topNode->child[0] = exprNode_1st;
-		 
-	}
-	
-	
-	
-	topNode->op = IFSELECTION;
-	topNode->child[0] = comparison(0);
-	TreeNode *tmpNode = topNode;
-	while(token.TokenClass == OPAND){
-		TreeNode *p = newNodeWithOp(IFSELECTION);
-		advance(token.TokenClass);
-		if(p!= NULL){
-			p->child[0] = comparison();
-			tmpNode->child[1] = p;
-			tmpNode->child[2] = topNode_Copy;
-			topNode_Copy->child[0] = falseNode;
-			tmpNode = tmpNode->child[1];
-		}
-	}
-	tmpNode->child[1] = topNode_Copy;
-	topNode_Copy->child[0] = trueNode;
-}
-
-
-TreeNode *processBexprForIF(TreeNode *ifsNode){
-	TreeNode *returnNode = NULL;
-	ifsNode->child[0] = comparison();
-	TreeNode *tmpNode = ifsNode;
-	while(token.TokenClass == OPAND){
-		TreeNode *p = newNodeWithOp(IFSELECTION);
-		advance(token.TokenClass);
-		if(p!= NULL){
-			p->child[0] = comparison();
-			tmpNode->child[1] = p;
-			tmpNode = tmpNode->child[1];
-		}
-	}
-	return tmpNode;
-}
-
-
-TreeNode *processBexprForWhile(TreeNode *ifsNode){
-	TreeNode *returnNode = NULL;
-	ifsNode->child[0] = comparison();
-	TreeNode *tmpNode = ifsNode;
-	while(token.TokenClass == OPAND){
-		TreeNode *p = newNodeWithOp(IFSELECTION);
-		advance(token.TokenClass);
-		if(p!= NULL){
-			p->child[0] = comparison();
-			p->child[2] = newNodeWithOp(KEYWORD_BREAK);
-			tmpNode->child[1] = p;
-			tmpNode = tmpNode->child[1];
-		}
-	}
-	return tmpNode;
-}
-*/
-
 TreeNode *selection_else(void){
 	TreeNode *cur_root = NULL;
 	if(token.TokenClass == KEYWORD_ELSE){
@@ -552,51 +482,33 @@ TreeNode *selection(void){
 	advance(KEYWORD_IF);
 	advance(LPAREN);
 	if(current_node != NULL){
-		//statement_parent = processBexprForIF(current_node);
-		//statement_parent = bexpr(false);;
 		current_node->child[0] = bexpr(false);
 	}
 	advance(RPAREN);
 	if(current_node != NULL){
-		//statement_parent = processBexprForIF(current_node);
-		//statement_parent = bexpr(false);;
-		current_node->child[1] = statement();
-		current_node->child[2] = selection_else();
+		current_node->child[1] = bexpr(true);
+		advance(KEYWORD_ELSE);
+		current_node->child[2] = bexpr(true);
 	}
-	//if(statement_parent != NULL){
-	//	statement_parent->child[1] = statement();
-	//	statement_parent->child[2] = selection_else();
-	//}
 	return current_node;
 }
 
 TreeNode *iteration(void){
 	TreeNode *current_node =  newNodeWithOp(ITERATION);
-	TreeNode *statement_parent = NULL; //to deal with &&
+	TreeNode *statement_parent = NULL;
 	advance(KEYWORD_WHILE); 
 	advance(LPAREN);
 	if(current_node != NULL){
-		//statement_parent = processBexprForWhile(current_node);
 		current_node->child[0] = bexpr(false);
 	}
 	advance(RPAREN); 
 	if(current_node != NULL){
-		//statement_parent = processBexprForIF(current_node);
-		//statement_parent = bexpr(false);;
 		ifInIteration++;
 		current_node->child[1] = statement();
 		ifInIteration--;
 	}
 	return current_node;
 }
-
-// to cover the case '&&'
-/*
-TreeNode *bexp_general(TreeNode **pointer_newLeaf_node){
-	TreeNode *t = comparison();
-	return bexp_general_prime(t);
-}
-*/
 
 TreeNode *assign_stmt(){
 	TreeNode * current_node = newNode(token);
@@ -610,8 +522,6 @@ TreeNode *assign_stmt(){
 	  }
 	advance(ASSIGN);
 	current_node->child[0] = bexpr(true);
-	//current_node->child[0] = exp();
-	advance(SEMI);
 	return current_node;
 }
 
@@ -619,9 +529,8 @@ TreeNode *output_stmt(){
 	TreeNode * current_node = newNode(token);
 	if(token.TokenClass==OUT) {
       advance(token.TokenClass);
-      current_node->child[0] = bexpr(true);
+      current_node->child[0] = bexpr(false);
     }
-	advance(SEMI);
 	return current_node;
 }
 
@@ -630,29 +539,11 @@ TreeNode *statement(){
 	switch(token.TokenClass){
 		case ID:
 			current_node = assign_stmt();
-			break;
-		case KEYWORD_IF:
-			current_node = selection(); 
-			break;
-		case KEYWORD_WHILE:
-			current_node = iteration(); 
-			break;
-		case LBRKT:
-			current_node = block(); 
+			advance(SEMI);
 			break;
 		case OUT:
 			current_node = output_stmt(); 
-			break;
-		case KEYWORD_BREAK:
-			if(ifInIteration > 0 ){
-				current_node = newNode(token);
-				advance(KEYWORD_BREAK);
-				advance(SEMI);	
-			}
-			else{
-				cerr<<"break statement should be inside iteration"<<endl;
-		        exit(1);
-			}
+			advance(SEMI);
 			break;
 		default:
 			break;
@@ -669,10 +560,6 @@ TreeNode *statements(){
 			break;
 		case ID:   // for assignment
 		case OUT:  // for output
-		case KEYWORD_IF: //for selection
-		case KEYWORD_WHILE: //for iteration
-		case LBRKT:   //for compound.
-		case KEYWORD_BREAK:
 			current_node = statement();
 			if(current_node != NULL){
 				current_node->sibling = statements();
@@ -707,6 +594,18 @@ TreeNode *local_vars(){
 			
 			if(current_node != NULL){
 				current_node->type = DATATYPE_BOOL;
+				current_node->sibling = local_vars();
+			}
+			break;
+		case KEYWORD_FUNDEF:
+			advance(KEYWORD_FUNDEF);
+			current_node = newNodeWithOp(DECNODE);
+			strcpy(current_node->id, token.TokenString.c_str());
+			advance(ID);
+			advance(SEMI);
+			
+			if(current_node != NULL){
+				current_node->type = DATATYPE_FUNC;
 				current_node->sibling = local_vars();
 			}
 			break;

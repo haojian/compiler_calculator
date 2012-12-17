@@ -72,11 +72,19 @@ TokenType getToken(void) {
 									currentToken.TokenString += c;
 					               currentToken.TokenClass = RPAREN;
 					               break;
+								 case ',':
+									currentToken.TokenString += c;
+									currentToken.TokenClass = KEYWORD_COMMA;
+									break;
 					             case '=':
 									c_next = cin.get();
 									if(c_next == '='){
 										currentToken.TokenClass = OPEQ;
 									    currentToken.TokenString = "==";
+									}
+									else if(c_next == '>'){
+										currentToken.TokenClass = OPRETURN;
+									    currentToken.TokenString = "=>";
 									}
 									else{
 										cin.putback(c_next);
@@ -132,6 +140,7 @@ TokenType getToken(void) {
 										exit(1);
 									}
 					               break;
+								/*
 								case '{':
 									currentToken.TokenClass = LBRKT;
 									currentToken.TokenString += c;
@@ -140,6 +149,7 @@ TokenType getToken(void) {
 									currentToken.TokenClass = RBRKT;
 									currentToken.TokenString += c;
 									break;
+								*/
 					             case '$':
 									currentToken.TokenString += c;
 					               currentToken.TokenClass = OUT;
@@ -193,6 +203,21 @@ TokenType getToken(void) {
 						}
 						else if(currentToken.TokenString.compare("bool") == 0){
 							currentToken.TokenClass = KEYWORD_BOOL;
+						}
+						else if(currentToken.TokenString.compare("fun") == 0){
+							currentToken.TokenClass = KEYWORD_FUNDEF;
+						}
+						else if(currentToken.TokenString.compare("fn") == 0){
+							currentToken.TokenClass = KEYWORD_FN;
+						}
+						else if(currentToken.TokenString.compare("let") == 0){
+							currentToken.TokenClass = KEYWORD_LET;
+						}
+						else if(currentToken.TokenString.compare("in") == 0){
+							currentToken.TokenClass = KEYWORD_IN;
+						}
+						else if(currentToken.TokenString.compare("end") == 0){
+							currentToken.TokenClass = KEYWORD_END;
 						}
 						else if(currentToken.TokenString.compare("true") == 0){
 							currentToken.TokenClass = KEYWORD_TRUE;

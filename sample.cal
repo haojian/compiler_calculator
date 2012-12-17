@@ -1,0 +1,11 @@
+int x;
+bool y;
+fun z1; fun z2; fun z3; fun z4;
+fun z5;
+z1 = fn(x) => (x && y);
+%z2 = fn(x) => let y=3 in if(x<y) z1 else fn(w)=>true end;
+%z3 = fn(x, y) =>y;
+%z4 = fn(f,x) =>f(x);
+%z5 = fn(x) => z4(z1, x);
+%$z3(x);
+%$z4(z1, false);

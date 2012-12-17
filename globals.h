@@ -93,9 +93,9 @@ typedef struct treeNode {
 } TreeNode;
 
 typedef struct functionType{
-	std::vector<int> parameterstype;
- 	int returnvaltype;
-	string typeString;
+	std::vector<struct functionType *> parameterstype;
+ 	struct functionType *returnvaltype;
+	int dataType;
 } FunctionType;
 
 #define ST_SIZE 26

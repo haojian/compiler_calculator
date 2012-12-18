@@ -74,7 +74,7 @@
 #define MAXSCOPE 50
 
 using namespace std;
-
+std::string SELFTEXT = "_self";
 typedef struct {
   int TokenClass;  /* one of the above */
   string TokenString;
@@ -90,12 +90,19 @@ typedef struct treeNode {
     char id[MAXIDLENGTH];
 	int type; // 0 means int, and 1 means bool, 2 means function.
 	int st_hash_index;
+	char *comment[500];
 } TreeNode;
 
-typedef struct functionType{
-	std::vector<struct functionType *> parameterstype;
- 	struct functionType *returnvaltype;
+
+typedef struct varType{
 	int dataType;
+    char varid[MAXIDLENGTH];
+}VarType;
+
+
+typedef struct functionType{
+	std::vector<VarType *> parameterstype;
+ 	VarType *returnvaltype;
 } FunctionType;
 
 #define ST_SIZE 26

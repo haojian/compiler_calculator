@@ -1,5 +1,0 @@
-int x;
-bool x;
-x = 2;
-y = true;
-$y;

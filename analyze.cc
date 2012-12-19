@@ -10,6 +10,16 @@ std::map <string, std::map<string, bucket *> > variableMap;
 int generated_functIndex=0;
 void analyzeIFS(TreeNode* icode, std::string scopename);
 
+
+char *typeEncoding(int input){
+	if(input == 320){
+		return "INT";
+	}else if(input == 321){
+		return "BOOL";
+	}else 
+		return "UNKOWN";
+}
+
 int isBexprSubtree(TreeNode *icode){
 	if(icode->op == OPLESSEQ 
 	|| icode->op == OPGREATEREQ 
@@ -129,10 +139,149 @@ void setVariableType(char* varName, std::string scopename, int dataType){
 	}
 }
 
-void setFunctionVariableType(char* varName, std::string functionname, int dataType, std::vector<VarType *> parameters, int returntype){
-
+void setFunctionVariableType(char* varName, std::string functionname, int dataType, std::vector<VarType *> parameters, VarType *returntype){
+	std::string varKey(varName);
+	if(dataType != DATATYPE_FUNC){
+		return;
+	}
+	if(variableMap[varKey][SELFTEXT]->infer_type == NULL){
+		variableMap[varKey][SELFTEXT]->infer_type = new FunctionType;
+		variableMap[varKey][SELFTEXT]->infer_type->parameterstype = parameters;
+		variableMap[varKey][SELFTEXT]->infer_type->returnvaltype = returntype;
+	}
+	else{
+		int ifmatch = checkParameterIfMatch(variableMap[varKey][SELFTEXT]->infer_type->parameterstype, parameters);
+		if(ifmatch == -1){
+			cout << varName << "parameter doesn't match." << endl;
+		}
+		if(returntype->dataType == DATATYPE_UNKOWN){
+			//do nothing.
+		}
+		else if(variableMap[varKey][SELFTEXT]->infer_type->returnvaltype->dataType == DATATYPE_UNKOWN){
+			variableMap[varKey][SELFTEXT]->infer_type->returnvaltype->dataType = returntype->dataType;
+		} 
+		else{
+			cout << varName << "return type doesn't match." << endl;
+		}
+	}
 }
 
+int typeTagging(TreeNode *icode, std::string functionname, int proposedType){
+	switch(icode -> op){
+		case OPLESSEQ:
+		case OPGREATEREQ:
+		case OPEQ:
+		case OPLESS:
+		case OPGREATER:
+		case OPNOTEQ:
+			if(proposedType != DATATYPE_UNKOWN && proposedType != DATATYPE_BOOL){
+				cout << "type inference error: " << icode->id <<" need to be DATATYPE_BOOL" <<endl;
+			}
+			icode->type = DATATYPE_BOOL;
+			typeTagging(icode->child[0], functionname, DATATYPE_INT);
+			typeTagging(icode->child[1], functionname, DATATYPE_INT);
+			break;
+		case OPNOT:
+			if(proposedType != DATATYPE_UNKOWN && proposedType != DATATYPE_BOOL){
+				cout << "type inference error: " << icode->id <<" need to be DATATYPE_BOOL" <<endl;
+			}
+			icode->type = DATATYPE_BOOL;
+			typeTagging(icode->child[0], functionname, DATATYPE_BOOL);
+			break;
+		case OPAND:
+			if(proposedType != DATATYPE_UNKOWN && proposedType != DATATYPE_BOOL){
+				cout << "type inference error: " << icode->id <<" need to be DATATYPE_BOOL" <<endl;
+			}
+			icode->type = DATATYPE_BOOL;
+			typeTagging(icode->child[0], functionname, DATATYPE_BOOL);
+			typeTagging(icode->child[1], functionname, DATATYPE_BOOL);
+			break;
+		case PLUS:
+		case SUB:
+		case TIMES:
+		case DIV:
+			icode->type = DATATYPE_INT;
+			typeTagging(icode->child[0], functionname, DATATYPE_INT);
+			typeTagging(icode->child[1], functionname, DATATYPE_INT);
+			break;
+		case ID:
+			if(icode->type == DATATYPE_FUNC){
+				//Collect parameters
+				std:vector<VarType *> parameters;
+				TreeNode *parameterPointer = icode->child[0]->child[0];
+				while(parameterPointer != NULL){
+					typeTagging(parameterPointer, functionname, DATATYPE_UNKOWN);
+					VarType *tmpType = new VarType;
+					tmpType->dataType = parameterPointer->type;
+					strcpy(tmpType->varid, parameterPointer->id);		
+					parameters.push_back(tmpType);
+					parameterPointer = parameterPointer->sibling;
+				}
+				VarType *returnType = new VarType;
+				returnType->dataType = proposedType;
+				setFunctionVariableType(icode->id, functionname, DATATYPE_FUNC, parameters, returnType);
+			}
+			else{
+				std::string varKey(icode->id);
+				if(variableMap[varKey][SELFTEXT] != NULL){
+					icode->type = variableMap[varKey][SELFTEXT]->type;
+				}
+				setVariableType(icode->id, functionname, proposedType);
+			}
+			break;
+		case NUM:
+			icode->type = DATATYPE_INT;
+			break;
+		case LETNODE:{
+			TreeNode *assignNode = icode->child[0];
+			std::string variableName(assignNode->id);
+			typeTagging(assignNode->child[0], functionname, DATATYPE_UNKOWN);
+			variableMap[functionname][variableName] = new bucket;
+			variableMap[functionname][variableName]->type = icode->child[0]->type;
+			break;
+			}
+		case ASSIGN:
+			typeTagging(icode->child[0], functionname, DATATYPE_UNKOWN);
+			setVariableType(icode->id, functionname, icode->child[0]->type);
+			break;
+		case KEYWORD_TRUE:
+		case KEYWORD_FALSE:
+			icode->type = DATATYPE_BOOL;
+			break;
+		case FUNCNODE:
+			icode->type = DATATYPE_FUNC;
+			if(strcmp(icode->id,"") == 0){
+				std::string functioname(icode->comment);
+				
+				//Collect parameters
+				std::vector<VarType *> parameters;
+				TreeNode *parameterPointer = icode->child[0];
+				while(parameterPointer != NULL){
+					typeTagging(parameterPointer, functionname, DATATYPE_UNKOWN);
+					VarType *tmpType = new VarType;
+					tmpType->dataType = parameterPointer->type;
+					strcpy(tmpType->varid, parameterPointer->id);		
+					parameters.push_back(tmpType);
+					parameterPointer = parameterPointer->sibling;
+				}
+				VarType *returnType = new VarType;
+				typeTagging(icode->child[1], functionname, DATATYPE_UNKOWN);
+				returnType->dataType = icode->child[1]->type;
+				setFunctionVariableType(icode->comment, functionname, DATATYPE_FUNC, parameters, returnType);
+			}
+			else{
+				cout << "Debug support: FUNCNODE ID is not empty: " << icode->id << endl;
+				exit(1);
+			}
+			break;
+		default:
+			cout << "Debug support: unhandled op: " << icode->op << endl;
+			exit(1);
+	}
+	return icode->type;
+}
+
+/*
 int typeTagging(TreeNode *icode, std::string functionname, int proposedType){
 	if(icode->op == OPLESSEQ
 	|| icode->op == OPGREATEREQ 
@@ -200,9 +349,11 @@ int typeTagging(TreeNode *icode, std::string functionname, int proposedType){
 	}
 	else{
 		cout << "unhandled op" << icode->op << endl;
+		exit(1);
 	}
 	return icode->type;
 }
+*/
 
 int ifVariableDefined(std::string idname, std::string scopename){	
 	if(variableMap[scopename][idname] != NULL || variableMap[scopename + "_parameters"][idname] != NULL || variableMap[idname][SELFTEXT] != NULL){
@@ -216,6 +367,19 @@ int ifVariableDefined(std::string idname, std::string scopename){
 	return -1;
 }
 
+bucket *getVariableBucketByIDScope(std::string idname, std::string scopename){	
+	if(variableMap[scopename][idname] != NULL){
+		return variableMap[scopename][idname];
+	}
+	if(variableMap[scopename + "_parameters"][idname] != NULL){
+		return variableMap[scopename + "_parameters"][idname];
+	}
+	if(variableMap[idname][SELFTEXT] != NULL){
+		return variableMap[idname][SELFTEXT];
+	}
+	return NULL;
+}
+
 void analyzeExp(TreeNode* icode, std::string scopename) {
 	if(icode != NULL){
 		if(icode ->op == ID){
@@ -223,6 +387,12 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 			if(ifVariableDefined(id_name, scopename) == -1){
 				cerr << "undefined variable: " << icode->id << endl;
 				exit(1);
+			}
+			if(getVariableBucketByIDScope(id_name, scopename)->type == DATATYPE_FUNC){
+				if(variableMap[id_name][SELFTEXT]->infer_type == NULL){
+					cerr << "function name was defined but the coentent was not decleared." << icode->id << endl;
+					exit(1);
+				}
 			}
 			//deal with call
 			if(icode->type == DATATYPE_FUNC){
@@ -260,12 +430,12 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 		else if(icode-> op >= 280 && icode-> op<=285){
 			//for comparison
 			analyzeExp(icode->child[0], scopename);
-			analyzeExp(icode->child[0], scopename);
+			analyzeExp(icode->child[1], scopename);
 			typeTagging(icode, scopename, DATATYPE_BOOL);
 		}
 		else if(icode-> op == OPAND){
 			analyzeExp(icode->child[0], scopename);
-			analyzeExp(icode->child[0], scopename);
+			analyzeExp(icode->child[1], scopename);
 			typeTagging(icode, scopename, DATATYPE_BOOL);
 		}
 		else if(icode-> op == OPNOT){
@@ -290,20 +460,29 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 			analyze_parameters(icode);
 			analyzeExp(icode, functionname);
 			*/
-			std::string generated_functname = scopename + "-FUNC" + generated_functIndex;
-			icode->comment = generated_functname;
+			char numstr[21]; // enough to hold all numbers up to 64-bits
+			sprintf(numstr, "%d", generated_functIndex);
+			std::string generated_functname = scopename + "-FUNC" + numstr;
 			generated_functIndex++;
+			strcpy(icode->comment, generated_functname.c_str());
 			
+			variableMap[generated_functname][SELFTEXT] = new bucket;
+			strcpy(variableMap[generated_functname][SELFTEXT]->name, icode->comment);
+			variableMap[generated_functname][SELFTEXT]->type = DATATYPE_FUNC;
 			//analyze parameter part.
 			TreeNode *p = icode->child[0];
 			while(p!=NULL){
 				std::string variableName(p->id);
 				variableMap[generated_functname+ "_parameters"][variableName] = new bucket;
 				variableMap[generated_functname+ "_parameters"][variableName]->type = DATATYPE_UNKOWN;
+				p= p->sibling;
 			}
 			
 			//analyze function content part.
 			analyzeExp(icode->child[1], generated_functname);
+		}
+		else if(icode->op == KEYWORD_FALSE || icode->op == KEYWORD_TRUE){
+			icode->type = DATATYPE_BOOL;
 		}
 		else{
 			cerr << "unhandle op: "<< icode->op <<endl;
@@ -311,34 +490,76 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 	}
 }
 
-void analyze_parameters(TreeNode* icode){
-	std::string functionname(icode->id);
-	std::string scopename = functionname + "_parameters";
-	TreeNode *p = icode->child[0]->child[0];
-	while(p != NULL){
-		std::string variableName(p->id);
-		//update the variable table
-		variableMap[scopename+ "_parameters"][variableName] = new bucket;
-		variableMap[scopename+ "_parameters"][variableName]->type = DATATYPE_UNKOWN;
-		//update functiontype tree
-		VarType *tmpType = new VarType;
-		tmpType->dataType = DATATYPE_UNKOWN;
-		strcpy(tmpType->varid, icode->id);		
-	
-		variableMap[functionname][defaultName]->infer_type->parameterstype.push_back(tmpType);
+std::string getUniqueID(TreeNode *icode){
+	if(strcmp(icode->id, "") != 0 ){
+		std::string res(icode->id);
+		return res;
+	}else if(strcmp(icode->comment, "")!=0){
+		std::string res(icode->comment);
+		return res;
+	}else
+		return NULL;
+}
+
+int ifFuctionTypeMatch(FunctionType *ftone, FunctionType *fttwo){
+	if(checkParameterIfMatch(ftone->parameterstype , fttwo->parameterstype) != 1){
+		return -1;
 	}
+	if(ftone->returnvaltype->dataType != fttwo->returnvaltype->dataType)
+	{
+		return -1;
+	}
+	return 1;
 }
 
 void analyzeIFS(TreeNode* icode, std::string scopename) {
   analyzeExp( icode->child[0], scopename);
   analyzeExp( icode->child[1], scopename );
   analyzeExp( icode->child[2], scopename );
-	int ifType = typeTagging(icode->child[0], functionname, DATATYPE_UNKOWN);
-	int elseType = typeTagging(icode->child[0], functionname, DATATYPE_UNKOWN);
+	int ifType = typeTagging(icode->child[1], scopename, DATATYPE_UNKOWN);
+	int elseType = typeTagging(icode->child[2], scopename, DATATYPE_UNKOWN);
+	if(ifType == elseType && ifType ==DATATYPE_FUNC){
+		//check parameter if match
+		if(ifFuctionTypeMatch(variableMap[getUniqueID(icode->child[1])][SELFTEXT]->infer_type, variableMap[getUniqueID(icode->child[2])][SELFTEXT]->infer_type) != 1)
+		{
+			cout << "the expression in if & else doesn't match" << endl;
+			exit(1);
+		}
+	}
 	if(ifType != elseType){
 		cout << "the expression in if & else doesn't match" << endl;
 		exit(1);
 	}
+}
+
+void analyze_parameters(TreeNode* icode){
+	std::string functionname(icode->id);
+	std::string params_scopename = functionname + "_parameters";
+	TreeNode *p = icode->child[0]->child[0];
+	while(p != NULL){
+		std::string variableName(p->id);
+		//update the variable table
+		variableMap[params_scopename][variableName] = new bucket;
+		variableMap[params_scopename][variableName]->type = DATATYPE_UNKOWN;
+		//update functiontype tree
+		VarType *tmpType = new VarType;
+		tmpType->dataType = DATATYPE_UNKOWN;
+		strcpy(tmpType->varid, p->id);		
+	
+		variableMap[functionname][SELFTEXT]->infer_type->parameterstype.push_back(tmpType);
+		p = p->sibling;
+	}
+}
+
+TreeNode *getReturnVarType(TreeNode *icode){
+	if(icode->op == LETNODE){
+		return getReturnVarType(icode->child[1]);
+	}else if(icode->op == IFSELECTION){
+		return getReturnVarType(icode->child[1]);
+	}else{
+		return icode;
+	}
+	
 }
 
 void analyze_func(TreeNode* icode){
@@ -349,7 +570,18 @@ void analyze_func(TreeNode* icode){
 	std::string functionname(icode->id);
 	variableMap[functionname][SELFTEXT]->infer_type = new FunctionType;
 	analyze_parameters(icode);
-	analyzeExp(icode, functionname);
+	analyzeExp(icode->child[0]->child[1], functionname);
+	//update infer_type.
+	//update return_type
+	VarType *tmpType = new VarType;
+	tmpType->dataType = getReturnVarType(icode->child[0]->child[1])->type;
+	strcpy(tmpType->varid, getReturnVarType(icode->child[0]->child[1])->id);	
+	variableMap[functionname][SELFTEXT]->infer_type->returnvaltype = tmpType;
+	//update parameters_type
+	vector<VarType *>parameters = variableMap[functionname][SELFTEXT]->infer_type->parameterstype;
+	for(int i=0; i<parameters.size(); i++){
+		parameters[i]->dataType = variableMap[functionname + "_parameters"][parameters[i]->varid]->type;
+	}
 }
 
 void analyze_s_stmt(TreeNode* icode){
@@ -362,7 +594,7 @@ void analyze_s_stmt(TreeNode* icode){
 					exit(1);
 				}
 				else if((variableMap[scopename][SELFTEXT]->type == DATATYPE_BOOL && isBexprSubtree(icode->child[0]) == 1)
-				|| (variableMap[scopename][SELFTEXT]->type == DATATYPE_INT && isBexprSubtree(icode->child[0]) == 0){
+				|| (variableMap[scopename][SELFTEXT]->type == DATATYPE_INT && isBexprSubtree(icode->child[0]) == 0)){
 					icode->type = variableMap[scopename][SELFTEXT]->type;
 					analyzeExp(icode->child[0], scopename);
 				}
@@ -386,7 +618,58 @@ void analyze_s_stmt(TreeNode* icode){
 		}
 }
 
+std::string funcTypeToString(bucket *func){
+	FunctionType *funcType = func->infer_type;
+	std::string res = "( ";
+	if(funcType != NULL){
+		for(int i=0; i<funcType->parameterstype.size(); i++){
+			if(funcType->parameterstype[i]->dataType == DATATYPE_INT || funcType->parameterstype[i]->dataType == DATATYPE_BOOL){
+				res +=  typeEncoding(funcType->parameterstype[i]->dataType);
+			}
+			else if(funcType->parameterstype[i]->dataType == DATATYPE_FUNC){
+				std::string tmpstr(funcType->parameterstype[i]->varid);
+				res += funcTypeToString(variableMap[tmpstr][SELFTEXT]);
+			}else if(funcType->parameterstype[i]->dataType == DATATYPE_UNKOWN){
+				res += funcType->parameterstype[i]->varid;
+			}		
+			if(i != (funcType->parameterstype.size() -1))
+				res += "*";
+		}
+	
+		res += "->";
+		if(funcType->returnvaltype->dataType == DATATYPE_INT || funcType->returnvaltype->dataType == DATATYPE_BOOL){
+			res +=  typeEncoding(funcType->returnvaltype->dataType);
+		}
+		else if(funcType->returnvaltype->dataType == DATATYPE_FUNC){
+			std::string tmpstr(funcType->returnvaltype->varid);
+			res += funcTypeToString(variableMap[tmpstr][SELFTEXT]);
+		}else if(funcType->returnvaltype->dataType == DATATYPE_UNKOWN){
+			res += funcType->returnvaltype->varid;
+		}
+	}
+	res += " )";
+	return res;
+}
 
+void printTypeInference(char *varName){
+	std::string varString(varName);
+	bucket *tmp = variableMap[varString][SELFTEXT];
+	if(tmp != NULL){
+		if(tmp->type == DATATYPE_FUNC){
+			cout << varName << ":" << funcTypeToString(tmp) << endl;
+		}else if(tmp->type == DATATYPE_INT || tmp->type == DATATYPE_BOOL){
+			cout << varName << " : " << typeEncoding(tmp->type) << endl;
+		}
+	}
+}
+
+void output(TreeNode* icode){
+	TreeNode *tmpNode = icode->child[0];
+	while(tmpNode != NULL){
+		printTypeInference(tmpNode->id);
+		tmpNode = tmpNode->sibling;
+	}
+}
 
 void analyzeBlock(TreeNode* icode){
 	TreeNode* p= icode->child[0];
@@ -403,7 +686,7 @@ void analyzeBlock(TreeNode* icode){
 		p = p->sibling;
 	}
 	analyze_s_stmt(icode->child[1]);
-	//output(icode);
+	output(icode);
 }
 
 void analyze(TreeNode* icode) {	

@@ -74,11 +74,14 @@
 #define MAXSCOPE 50
 
 using namespace std;
-std::string SELFTEXT = "_self";
+
 typedef struct {
   int TokenClass;  /* one of the above */
   string TokenString;
 } TokenType;
+
+#define SELFTEXT "_self"
+
 
 #define MAXCHILDREN 3
 
@@ -88,9 +91,9 @@ typedef struct treeNode {
     int op;
     int val;
     char id[MAXIDLENGTH];
-	int type; // 0 means int, and 1 means bool, 2 means function.
+	int type;
 	int st_hash_index;
-	char *comment[500];
+	char comment[500];
 } TreeNode;
 
 

@@ -24,6 +24,7 @@ int ifInIteration = 0;
 TreeNode * newNodeWithOp(int op) {
   TreeNode * t = (TreeNode *) malloc(sizeof(TreeNode));
   int i;
+	t->type = DATATYPE_UNKOWN;
   if (t==NULL) {
     cerr << "Out of memory error at line %d\n";
     exit(1);
@@ -38,6 +39,7 @@ TreeNode * newNodeWithOp(int op) {
 TreeNode * newNode(TokenType tType) {
   TreeNode * t = (TreeNode *) malloc(sizeof(TreeNode));
   int i;
+t->type = DATATYPE_UNKOWN;
   if (t==NULL) {
     cerr << "Out of memory error at line %d\n";
     exit(1);
@@ -277,6 +279,7 @@ TreeNode *getFuncCall(TreeNode * funcNode){
 	advance(LPAREN);
 	funcNode->child[0] = getParameters();
 	advance(RPAREN);
+	return funcNode;
 }
 
 

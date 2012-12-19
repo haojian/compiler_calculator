@@ -70,6 +70,8 @@ int Sethi_Ullman_Counter(TreeNode *icode){
 }
 
 
+/*tmp code start*/
+/*tmp code end*/
 void emit(string code, OpCodeType ctype, 
 	  int operand1, int operand2, int operand3) {
 		if(ICounter> CODESIZE-1){

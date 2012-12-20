@@ -94,12 +94,15 @@ typedef struct treeNode {
 	int type;
 	int st_hash_index;
 	char comment[500];
+	int isCopy;
+	int isCall;
 } TreeNode;
 
 
 typedef struct varType{
 	int dataType;
     char varid[MAXIDLENGTH];
+	int isCall;
 }VarType;
 
 

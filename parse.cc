@@ -17,6 +17,7 @@ int ifExpressioninPAREN = 0;  /* if the expression is in parens, then SEMI is no
 TreeNode *bexp_general();
 int inExpr = 0; // 0 for boolean, 1 for comparison, 2 for expression
 int ifInIteration = 0;
+TreeNode *getFuncCall(TreeNode * funcNode);
 /* Function newExpNode creates a new expression 
  * node for syntax tree construction
  */
@@ -121,6 +122,10 @@ TreeNode * factor(void) {
       strcpy(t->id, token.TokenString.c_str());
 	}
     advance(ID);
+	//deal with call
+	if (token.TokenClass == LPAREN){
+		t = getFuncCall(t);
+	}
     break;
   case LPAREN :
     advance(LPAREN);
@@ -260,6 +265,7 @@ TreeNode *getFuncDef(){
 	advance(RPAREN);
 	advance(OPRETURN);
 	t->child[1] = bexpr(true);
+	
 	return t;
 }
 
@@ -279,6 +285,7 @@ TreeNode *getFuncCall(TreeNode * funcNode){
 	advance(LPAREN);
 	funcNode->child[0] = getParameters();
 	advance(RPAREN);
+	funcNode->isCall = 1;
 	return funcNode;
 }
 
@@ -366,6 +373,12 @@ TreeNode * bexpr(bool inParen) { // initial value of inParen is false
 		strcpy(t->id , token.TokenString.c_str());
     advance(ID);
 
+	//deal with call
+	if (token.TokenClass == LPAREN){
+		inExpr = 2;
+		t = getFuncCall(t);
+	}
+
 	if(token.TokenClass == DIV || token.TokenClass == TIMES){
 		inExpr = 2;
 		t = term_prime(t);
@@ -376,13 +389,6 @@ TreeNode * bexpr(bool inParen) { // initial value of inParen is false
       inExpr = 2;
       t = exp_prime(t);
     }
-
-	//deal with call
-	if (token.TokenClass == LPAREN){
-		inExpr = 2;
-		t = getFuncCall(t);
-		return t;
-	}
 
     if (token.TokenClass == OPLESSEQ 
 		|| token.TokenClass == OPGREATEREQ

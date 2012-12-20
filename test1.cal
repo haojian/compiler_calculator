@@ -1,0 +1,8 @@
+fun a;
+fun b;
+fun c;
+int x;
+x = 1;
+a = fn(x) => x;
+b = fn(x) => x;
+c = fn(x, y, z) => if (a(b(z)) >= 2) b(x) else a(y);

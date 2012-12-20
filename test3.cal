@@ -1,0 +1,5 @@
+int x;
+bool y;
+fun z;
+
+z = fn (x) => let a = fn (x, y) => if (y) x else x in a(x, y) end;

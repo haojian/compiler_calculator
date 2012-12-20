@@ -1,0 +1,5 @@
+int x;
+fun fib;
+fun check;
+fib=fn(n)=>if(n==0) 0 else if(n==1) 1 else fib(n-1)+fib(n-2);
+check=fn(n)=>let m=n+1 in fib(m)-fib(n)>=1000 end;

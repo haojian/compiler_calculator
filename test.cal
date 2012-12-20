@@ -1,21 +1,3 @@
-%jfeijf
-
-int ab;
-int b;
-int abc;
-int bde;
-int bd;
-int eg;
-%int bd; % to check the multiply declared variables
-%fhfueh
-b=2+3*4;;;;;;;;;;;;;;
-;;;;
-ab=122; %ffeijfieji
-;;;;
-abc =2;
-bde=5;
-bd = input();
-%bd = 5;
-$ab+b + abc*(bde +5)*bd;
-eg =33+ bd * -3+5;
-$eg;
+fun fib;
+fib=fn(n)=>if(n==0) 0 else if(n==1) 1 else fib(n-1)+fib(n-2);
+$fib(5);

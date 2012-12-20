@@ -25,7 +25,6 @@
 #define LETNODE   276
 #define FUNCNODE   277
 
-
 #define OPLESSEQ 280
 #define OPGREATEREQ 281
 #define OPEQ  282
@@ -146,7 +145,7 @@ TokenType getToken(void);
 TreeNode *program(void);
 
 void analyze(TreeNode*);
-void codeGenStmt(TreeNode*, int);
+void codeGenProgram(TreeNode*);
 void emit(string,OpCodeType,int,int,int);
 void printCode(void);
 int hash(char *);

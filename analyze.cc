@@ -8,6 +8,7 @@
 std::map <string, std::map<string, bucket *> > variableMap;
 std::map <string, TreeNode *> functionCalleeMap;
 
+int gloablAddr = 0;
 int generated_functIndex=0;
 void analyzeIFS(TreeNode* icode, std::string scopename);
 
@@ -278,13 +279,28 @@ int typeTagging(TreeNode *icode, std::string functionname, int proposedType){
 					//getEqualExpr(icode)->type = proposedType;
 					
 					string returncodeVal(getEqualExpr(icode)->id);
-					getVariableBucketByIDScope(returncodeVal, functionname)->type = proposedType;
+					
+					if(getVariableBucketByIDScope(returncodeVal, functionname)->infer_type == NULL){
+						getVariableBucketByIDScope(returncodeVal, functionname)->infer_type = new FunctionType;
+					}
+					if(	getVariableBucketByIDScope(returncodeVal, functionname)->infer_type->returnvaltype == NULL){
+						getVariableBucketByIDScope(returncodeVal, functionname)->infer_type->returnvaltype = new VarType;
+					}
+					getVariableBucketByIDScope(returncodeVal, functionname)->infer_type->returnvaltype->dataType = proposedType;
 				}
 			}
 			else{
 				string idcodestr(icode->id);
-				if(proposedType != DATATYPE_UNKOWN)
-					getVariableBucketByIDScope(idcodestr, functionname)->type = proposedType;
+				if(proposedType != DATATYPE_UNKOWN){
+					
+					if(getVariableBucketByIDScope(idcodestr, functionname)->infer_type == NULL){
+						getVariableBucketByIDScope(idcodestr, functionname)->infer_type = new FunctionType;
+					}
+					if(	getVariableBucketByIDScope(idcodestr, functionname)->infer_type->returnvaltype == NULL){
+						getVariableBucketByIDScope(idcodestr, functionname)->infer_type->returnvaltype = new VarType;
+					}
+					getVariableBucketByIDScope(idcodestr, functionname)->infer_type->returnvaltype->dataType = proposedType;
+				}
 			}
 			/*
 			if(icode->type == DATATYPE_FUNC){
@@ -317,7 +333,10 @@ int typeTagging(TreeNode *icode, std::string functionname, int proposedType){
 			std::string variableName(assignNode->id);
 			typeTagging(assignNode->child[0], functionname, DATATYPE_UNKOWN);			
 			variableMap[functionname][variableName] = new bucket;
-			variableMap[functionname][variableName]->type = icode->child[0]->type;
+			
+			variableMap[functionname][variableName]->infer_type = new functionType;
+			variableMap[functionname][variableName]->infer_type ->returnvaltype = new VarType;
+			variableMap[functionname][variableName]->infer_type ->returnvaltype->dataType = icode->child[0]->type;
 			break;
 			}
 		case ASSIGN:
@@ -496,7 +515,8 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 					replace(icode->child[1], replacementMap, replacementVarParametersMap);
 					std::string nxtfuncName(icode->child[1]->id);
 					if(icode->child[1]->type == DATATYPE_UNKOWN){
-						icode->child[1]->type = getVariableBucketByIDScope(nxtfuncName, scopename)->type;
+						if(getVariableBucketByIDScope(nxtfuncName, scopename)!= NULL)
+							icode->child[1]->type = getVariableBucketByIDScope(nxtfuncName, scopename)->type;
 					}
 					analyzeExp(icode->child[1], scopename);
 				}
@@ -560,7 +580,9 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 			std::string variableName(icode->child[0]->id);
 			variableMap[scopename][variableName] = new bucket;
 			typeTagging(icode->child[0]->child[0], scopename, DATATYPE_UNKOWN);
-			variableMap[scopename][variableName]->type = icode->child[0]->child[0]->type;
+			variableMap[scopename][variableName]->infer_type = new functionType;
+			variableMap[scopename][variableName]->infer_type ->returnvaltype = new VarType;
+			variableMap[scopename][variableName]->infer_type ->returnvaltype->dataType = icode->child[0]->child[0]->type;
 			
 			analyzeExp(icode->child[1], scopename);
 		}
@@ -674,11 +696,12 @@ void analyze_parameters(TreeNode* icode){
 		//update the variable table
 		variableMap[params_scopename][variableName] = new bucket;
 		variableMap[params_scopename][variableName]->type = DATATYPE_UNKOWN;
+		
 		//update functiontype tree
 		VarType *tmpType = new VarType;
 		tmpType->dataType = DATATYPE_UNKOWN;
 		strcpy(tmpType->varid, p->id);		
-	
+		
 		variableMap[functionname][SELFTEXT]->infer_type->parameterstype.push_back(tmpType);
 		p = p->sibling;
 	}
@@ -707,6 +730,36 @@ void analyze_func(TreeNode* icode){
 	}
 }
 
+void analyzeExpWithoutTypeInference(TreeNode* icode) {
+    /* look for all occurrences of undefined variables */
+    if (icode != NULL) {
+	//if (icode -> op == ID && !ST[icode -> id - 'a']) {
+	std::string varKey(icode->id);
+	if (icode -> op == ID && variableMap[varKey][SELFTEXT] == NULL) {
+	    cerr << "undefined variable: " << icode->id << endl;
+	    exit(1);
+	}
+	else if((icode-> op == PLUS) || (icode->op == SUB) || (icode->op == TIMES)){
+		constant_folding(icode);
+	}
+	else if(icode->op == DIV){
+		constant_folding(icode->child[0]);
+		constant_folding(icode->child[1]);
+		if((icode->child[1]->op == NUM) && (icode->child[1]->val == 0)){
+			cerr << "Error! Division by zero!" <<endl;
+			exit(1);
+		}
+		constant_folding(icode);
+	}
+	else{
+		
+	}
+	
+	for (int i = 0; i < MAXCHILDREN; i++)
+	    analyzeExpWithoutTypeInference(icode -> child[i]);
+  }
+}
+
 void analyze_s_stmt(TreeNode* icode){
 	while(icode != NULL){
 		std::string scopename(icode->id);
@@ -731,8 +784,7 @@ void analyze_s_stmt(TreeNode* icode){
 				functionCalleeMap[scopename] = icode->child[0];
 				break;
 			case OUT:
-				scopename = "global";
-				analyzeExp(icode -> child[0], "global");
+				analyzeExpWithoutTypeInference(icode -> child[0]);
 				break;
 			default:
 				cerr << "statements grammer error: " << icode->op << endl;
@@ -841,8 +893,13 @@ void output(TreeNode* icode){
 		tmpNode = tmpNode->sibling;
 	}
 }
+bucket **debug_tracker = NULL;
 
 void analyzeBlock(TreeNode* icode){
+	TreeNode *tmpNode = icode->child[0];
+	string tmpstr(tmpNode->id);
+	debug_tracker = &variableMap[tmpstr][SELFTEXT];
+	
 	TreeNode* p= icode->child[0];
 	while(p != NULL){
 		if(p->op != DECNODE){
@@ -850,9 +907,12 @@ void analyzeBlock(TreeNode* icode){
 			exit(1);
 		}
 		std::string scopename(p->id);
-
 		variableMap[scopename][SELFTEXT] = new bucket;
 		variableMap[scopename][SELFTEXT]->type = p->type;
+		if(variableMap[scopename][SELFTEXT]->type != DATATYPE_FUNC){
+			variableMap[scopename][SELFTEXT]->addr = gloablAddr;
+			gloablAddr--;
+		}
 		//variableMap[var_str][defaultName]->addr = ;
 		p = p->sibling;
 	}

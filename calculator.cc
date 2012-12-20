@@ -9,7 +9,7 @@ int main(void) {
     exit(1);
   }
   analyze(icode);
-  codeGenStmt(icode, 0);
+  codeGenProgram(icode);
   printCode();
   return 0;
 }

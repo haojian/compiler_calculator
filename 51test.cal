@@ -1,0 +1,4 @@
+
+fun z;
+z = fn (x) => let a = fn (x) => x in a(5) end;
+$z(2);

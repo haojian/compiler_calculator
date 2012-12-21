@@ -12,7 +12,8 @@ static int localAddr = 100;
 static CodeType codeArray[CODESIZE];
 extern std::map <string, std::map<string, bucket *> > variableMap;
 
-bucket *getFunctionBucketbyNameScope(std::string name, std::string scopename);
+
+
 TreeNode *getEqualExpr(TreeNode *icode);
 /*tmp code start*/
 /*tmp code end*/
@@ -93,14 +94,14 @@ void cmpjmpwithOP(int op,int base,int Counter) {
 }
 
 void codeGenExp(TreeNode* icode, std::string scopename, int neg){
-	if(icode == NULL) return;
+	if(icode == NULL || icode->isCopy == 1) return;
 	bucket* tmpBucket = NULL;
   	
 	switch(icode->op){
 		case ID:{
 			if(icode->type != DATATYPE_FUNC){
 				std::string tmpstr(icode->id);
-				tmpBucket = getFunctionBucketbyNameScope(tmpstr, scopename);
+				tmpBucket = getVariableBucketByIDScope(tmpstr, scopename);
 		    	emit("LD", RM, 0, tmpBucket->addr, 6);
 			}
 			//deal with function call.
@@ -110,7 +111,7 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 				int parameterCounter = 0;
 				while(parameterPoint != NULL){
 					parameterCounter++;
-					codeGenExp(parameterPoint->child[0], scopename, 0);
+					codeGenExp(parameterPoint, tmpstr, 0);
 					parameterPoint = parameterPoint->sibling;
 					emit("ST",RM,0,0,5);
 				  	emit("LDA",RM,5,-1,5); 
@@ -122,7 +123,7 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 			    emit("LDA",RM,5,-1,5); 
 				emit("LDA",RM,6,2,5); 
 				
-				tmpBucket = variableMap[tmpstr][SELFTEXT];
+				tmpBucket = getVariableBucketByIDScope(tmpstr, scopename);
 				emit("LDC",RM,7,tmpBucket->addr,0); 
 				
 				emit("LDA",RM,5,parameterCounter,6);
@@ -254,7 +255,26 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 			emit("LDC",RM,0,0,0);
         	break;
 		case LETNODE:
-			break;
+			{
+				string tmpid(icode->child[0]->id);
+				tmpBucket = getVariableBucketByIDScope(tmpid, scopename);
+				if(tmpBucket->type == DATATYPE_FUNC){
+					int saveLoc0 = ICounter;
+			  		emit("LDC",RM,7,-1,0);
+			  		tmpBucket->addr = ICounter;
+			  		codeGenExp(icode->child[0]->child[0], scopename, neg);
+			  		codeArray[saveLoc0].rand2 = ICounter;
+				}
+				else{
+					codeGenExp(icode->child[0]->child[0], scopename, neg); 
+		      		emit("ST", RM, 0, tmpBucket->addr, 6);
+			  		emit("LDA",RM,5,-1,5);
+				}
+				codeGenExp(icode->child[1], scopename, neg);
+				if (tmpBucket->type!=DATATYPE_FUNC)
+					emit("LDA",RM,5,1,5);
+				break;
+			}
 		case IFSELECTION:{
 			int saveLoc1, saveLoc2;
 			codeGenExp(icode->child[0], scopename, 0);
@@ -269,6 +289,8 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 			break;
 		}
 		case DATATYPE_FUNC:
+			codeGenExp(icode->child[1], scopename, neg);
+			emit("LD",RM,7,0,6); //reset pc to return address
 			break;
 		case FUNCNODE:
 			codeGenExp(icode->child[1], scopename, neg);
@@ -317,7 +339,7 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 }
 
 void codeGenStmt(TreeNode* icode) {
-	if (icode==NULL) return;
+	if (icode==NULL || icode->isCopy == 1) return;
   	bucket* tmpBucket = NULL;
 	
 	switch(icode->op){
@@ -359,7 +381,7 @@ void codeGenStmt(TreeNode* icode) {
 void codeGenProgram(TreeNode* icode){
 	//register 5 for stack pointer, 6 for frame-point (local variable address), 7 for  
 	emit("LD",RM,6,0,0); 		//the intial address of dem[0] = 1023, load this address to frame pointer. fp(6) = 1023
-  	emit("LDA",RM,5,gloablAddr,6); 	//reserver global addresses, and set the stack to the position after globla variables. sp(5) = 1023 - #globalvariable = 1023 - gloabaladdr +2
+  	emit("LDA",RM, 5, gloablAddr,6); 	//reserver global addresses, and set the stack to the position after globla variables. sp(5) = 1023 - #globalvariable = 1023 - gloabaladdr +2
   	emit("LDA",RM,6,2,5); 		//
   	emit("LDC", RM, 4, localAddr, 0);
 	if(icode != NULL){

@@ -480,7 +480,31 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 					// add the real function to the specific call.
 					TreeNode *functionNode = functionCalleeMap[id_name];
 					icode->child[1] = deepCopy(functionNode->child[1]);
-				
+					/*
+					TreeNode *parameteraddrTagger = icode->child[0];
+
+					int parameterCounter = 0;
+					while(parameteraddrTagger != NULL){
+						if(parameteraddrTagger->op == ID &&parameteraddrTagger->type == DATATYPE_FUNC){
+							//do nothing.
+						}else{
+							std::string parameterID(parameteraddrTagger->id);
+							getVariableBucketByIDScope(parameterID, id_name)->addr = parameterCounter;
+							parameterCounter++;
+						}
+						parameteraddrTagger = parameteraddrTagger->sibling;
+					}
+					parameteraddrTagger = icode->child[0];
+					while(parameteraddrTagger != NULL){
+						if(parameteraddrTagger->op == ID &&parameteraddrTagger->type == DATATYPE_FUNC){
+							//do nothing.
+						}else{
+							std::string parameterID(parameteraddrTagger->id);
+							getVariableBucketByIDScope(parameterID, id_name)->addr =parameterCounter-getVariableBucketByIDScope(parameterID, id_name)->addr;	
+						}
+						parameteraddrTagger = parameteraddrTagger->sibling;
+					}
+					*/
 					// replace the parameter to the real function.
 					std::map<string, VarType*> replacementMap;
 					std::map<string, TreeNode *> replacementVarParametersMap;
@@ -580,6 +604,7 @@ void analyzeExp(TreeNode* icode, std::string scopename) {
 			std::string variableName(icode->child[0]->id);
 			variableMap[scopename][variableName] = new bucket;
 			typeTagging(icode->child[0]->child[0], scopename, DATATYPE_UNKOWN);
+			variableMap[scopename][variableName]->addr = -2;
 			variableMap[scopename][variableName]->infer_type = new functionType;
 			variableMap[scopename][variableName]->infer_type ->returnvaltype = new VarType;
 			variableMap[scopename][variableName]->infer_type ->returnvaltype->dataType = icode->child[0]->child[0]->type;
@@ -691,18 +716,27 @@ void analyze_parameters(TreeNode* icode){
 	std::string functionname(icode->id);
 	std::string params_scopename = functionname + "_parameters";
 	TreeNode *p = icode->child[0]->child[0];
+	int parameterCounter = 0;
 	while(p != NULL){
 		std::string variableName(p->id);
 		//update the variable table
 		variableMap[params_scopename][variableName] = new bucket;
 		variableMap[params_scopename][variableName]->type = DATATYPE_UNKOWN;
-		
+
+		variableMap[params_scopename][variableName]->addr = parameterCounter;
 		//update functiontype tree
 		VarType *tmpType = new VarType;
 		tmpType->dataType = DATATYPE_UNKOWN;
 		strcpy(tmpType->varid, p->id);		
 		
 		variableMap[functionname][SELFTEXT]->infer_type->parameterstype.push_back(tmpType);
+		p = p->sibling;
+		parameterCounter++;
+	}
+	p = icode->child[0]->child[0];
+	while(p != NULL){
+		std::string variableName(p->id);
+		variableMap[params_scopename][variableName]->addr = parameterCounter - variableMap[params_scopename][variableName]->addr;
 		p = p->sibling;
 	}
 }
@@ -913,11 +947,23 @@ void analyzeBlock(TreeNode* icode){
 			variableMap[scopename][SELFTEXT]->addr = gloablAddr;
 			gloablAddr--;
 		}
+		else{
+			variableMap[scopename][SELFTEXT]->addr = 100;
+		}
 		//variableMap[var_str][defaultName]->addr = ;
 		p = p->sibling;
 	}
 	analyze_s_stmt(icode->child[1]);
-	output(icode);
+	p = icode->child[0];	
+	//reverse the address.
+	while( p != NULL){
+		std::string scopename(p->id);
+		if(p->type != DATATYPE_FUNC){
+			variableMap[scopename][SELFTEXT]->addr = variableMap[scopename][SELFTEXT]->addr - gloablAddr + 2;
+		}
+		p = p->sibling;
+	}
+	//output(icode);
 }
 
 void analyze(TreeNode* icode) {	

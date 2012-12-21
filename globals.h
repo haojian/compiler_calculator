@@ -155,5 +155,6 @@ int getAddrByid(char *);
 int getTypeByid(char *);
 std::string getblockname( int);
 TreeNode * newNodeWithOp(int);
+bucket *getVariableBucketByIDScope(std::string idname, std::string scopename);
 
 #endif

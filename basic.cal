@@ -1,0 +1,6 @@
+fun z;
+int x;
+x= 3;
+z = fn(x)=>let y =3 in y + x end;
+$z(z(3));
+%$z(input()); 

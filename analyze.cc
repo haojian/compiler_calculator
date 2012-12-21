@@ -741,42 +741,38 @@ void analyze_parameters(TreeNode* icode){
 	}
 }
 
-TreeNode * get_tailNode(TreeNode *icode){
+void tag_tailrecursion(TreeNode *icode, std::string functionname){
 	if(icode != NULL && icode->isCopy != 1){
 		TreeNode *rightmostNode = NULL;
-		//find the the first tail call and end;
-		if(icode->op == ID && icode->type == DATATYPE_FUNC){
-			return icode;
-		}
-		for(int i=0; i<MAXCHILDREN; i++){
-			if(icode->child[i] != NULL && icode->child[i]->isCopy != 1){
-				rightmostNode = icode->child[i];
+		switch(icode->op){
+			case DIV:
+			case PLUS:
+			case SUB:
+			case TIMES:
+			case OPLESSEQ:
+			case OPGREATEREQ:
+			case OPEQ:
+			case OPLESS:
+			case OPGREATER:
+			case OPNOTEQ:
+			case OPAND:
+			case OPNOT:
+				break;
+			case ID:
+				if(icode->type == DATATYPE_FUNC && strcmp(icode->id, functionname.c_str()) == 0)
+					icode->isTailRecursion = 1;
+				break;
+			case IFSELECTION:
+				tag_tailrecursion(icode->child[1], functionname);
+				tag_tailrecursion(icode->child[2], functionname);
+				break;
+			case LETNODE:
+				tag_tailrecursion(icode->child[1], functionname);
+				break;
+			default:
+				break;
 			}
-		}
-		return get_tailNode(rightmostNode);
 	}
-	return NULL;
-}
-
-void tag_isTailRecursion(TreeNode *icode, std::string functionname){
-	if(icode == NULL)
-		return;
-	if(icode->op == ID && icode->type == DATATYPE_FUNC && strcmp(icode->id, functionname.c_str()) == 0){
-		icode->isTailRecursion = 1;
-	}
-}
-
-void tag_tailrecursion(TreeNode *icode, std::string functionname){
-	if(icode->op == IFSELECTION){
-		TreeNode *tailnode1 = get_tailNode(icode->child[1]);
-		TreeNode *tailnode2 = get_tailNode(icode->child[2]);
-		tag_isTailRecursion(tailnode1, functionname);
-		tag_isTailRecursion(tailnode2, functionname);
-	}else{
-		TreeNode *tailnode1 = get_tailNode(icode->child[1]);
-		tag_isTailRecursion(tailnode1, functionname);
-	}
-
 }
 
 void analyze_func(TreeNode* icode){

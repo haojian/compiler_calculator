@@ -1,0 +1,4 @@
+%tail recursion test
+fun fib;
+fib=fn(n, m)=>if(n==0) m else fib(n-1, m+n);
+$fib(2000, 0);

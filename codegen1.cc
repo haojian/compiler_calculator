@@ -106,28 +106,73 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 			}
 			//deal with function call.
 			else{
-				std::string tmpstr(icode->id);
-				TreeNode *parameterPoint = icode->child[0];
-				int parameterCounter = 0;
-				while(parameterPoint != NULL){
-					parameterCounter++;
-					codeGenExp(parameterPoint, tmpstr, 0);
-					parameterPoint = parameterPoint->sibling;
-					emit("ST",RM,0,0,5);
-				  	emit("LDA",RM,5,-1,5); 
+				if(icode->isTailRecursion != 0){
+					 //emit("tailrecursion",RM,0,0,5); 
+					int saveLoc = ICounter;
+					std::string tmpstr(icode->id);
+					TreeNode *parameterPoint = icode->child[0];
+					int parameterCounter = 0;
+					while(parameterPoint != NULL){
+						parameterCounter++;
+						codeGenExp(parameterPoint, scopename, 0);
+						parameterPoint = parameterPoint->sibling;
+						emit("ST",RM,0,0,5);
+					  	emit("LDA",RM,5,-1,5); 
+					}
+					//copy the value to the original parameter position
+					//emit("LDA",RM, 2, parameterCounter,5);	//load new parameter initial start position
+					emit("SUB",RO,2,6,5);				//get the move distance
+					for(int i=0; i<parameterCounter; i++){
+						emit("LDA",RM,5,1,5);	//stack back 
+						emit("LD",RM,0,0,5);	//load data on statck
+						emit("ADD",RO,1,2,5);	//get the responsing position. store it in 1.
+						emit("ST",RM,0,0,1);	//store the new parameter to the original position.
+					}
+					emit("ADD",RO,5,2,5);		//stack recovery 
+					for(int i=0; i<parameterCounter; i++){
+						emit("LDA",RM,5,-1,5);
+					}
+					emit("LDA",RM,5,-2,5);		//
+					//emit("LDA",RM,5,-1,1);	
+					//emit("LDC",RM,0,ICounter+7,0); //return address already been setted. 
+				    //emit("ST",RM,0,0,5); //return address already been setted. 
+				    //emit("LDA",RM,5,-1,5); //return address already been setted. 
+				    // emit("ST",RM,6,0,5); //control link already been setted. 
+				    //emit("LDA",RM,5,-1,5); //control link already been setted. 
+					//emit("LDA",RM,6,2,5);  //using the same frame point, shouldn't update fp.
+				
+					/* jump tp function */
+					tmpBucket = getVariableBucketByIDScope(tmpstr, scopename);
+					emit("LDC",RM,7,tmpBucket->addr,0);
+				
+					//emit("LDA",RM,5,parameterCounter,6);
+					//emit("LD",RM,6,-1,6);
 				}
-				emit("LDC",RM,0,ICounter+7,0); 
-			    emit("ST",RM,0,0,5); 
-			    emit("LDA",RM,5,-1,5); 
-			    emit("ST",RM,6,0,5); 
-			    emit("LDA",RM,5,-1,5); 
-				emit("LDA",RM,6,2,5); 
+				else{
+					std::string tmpstr(icode->id);
+					TreeNode *parameterPoint = icode->child[0];
+					int parameterCounter = 0;
+					while(parameterPoint != NULL){
+						parameterCounter++;
+						codeGenExp(parameterPoint, scopename, 0);
+						parameterPoint = parameterPoint->sibling;
+						emit("ST",RM,0,0,5);
+					  	emit("LDA",RM,5,-1,5); 
+					}
+					emit("LDC",RM,0,ICounter+7,0); 
+				    emit("ST",RM,0,0,5); 
+				    emit("LDA",RM,5,-1,5); 
+				    emit("ST",RM,6,0,5); 
+				    emit("LDA",RM,5,-1,5); 
+					emit("LDA",RM,6,2,5); 
 				
-				tmpBucket = getVariableBucketByIDScope(tmpstr, scopename);
-				emit("LDC",RM,7,tmpBucket->addr,0); 
+					/* jump tp function */
+					tmpBucket = getVariableBucketByIDScope(tmpstr, scopename);
+					emit("LDC",RM,7,tmpBucket->addr,0); 
 				
-				emit("LDA",RM,5,parameterCounter,6);
-				emit("LD",RM,6,-1,6);
+					emit("LDA",RM,5,parameterCounter,6);
+					emit("LD",RM,6,-1,6);
+				}
 			}
 			break;
 		}
@@ -234,7 +279,7 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 			else
 			  emit("JLE",RM,0,ICounter+3,MAX_REG);
 			emit("LDC",RM,0,1,0);
-			emit("LDC",RM,7,ICounter+2,0); //skip the false load
+			emit("LDC",RM,7,ICounter+2,0);
 			emit("LDC",RM,0,0,0);
 			break;
       	case OPNOTEQ:
@@ -290,7 +335,7 @@ void codeGenExp(TreeNode* icode, std::string scopename, int neg){
 		}
 		case DATATYPE_FUNC:
 			codeGenExp(icode->child[1], scopename, neg);
-			emit("LD",RM,7,0,6); //reset pc to return address
+			emit("LD",RM,7,0,6);
 			break;
 		case FUNCNODE:
 			codeGenExp(icode->child[1], scopename, neg);

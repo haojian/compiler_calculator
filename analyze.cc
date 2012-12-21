@@ -741,6 +741,44 @@ void analyze_parameters(TreeNode* icode){
 	}
 }
 
+TreeNode * get_tailNode(TreeNode *icode){
+	if(icode != NULL && icode->isCopy != 1){
+		TreeNode *rightmostNode = NULL;
+		//find the the first tail call and end;
+		if(icode->op == ID && icode->type == DATATYPE_FUNC){
+			return icode;
+		}
+		for(int i=0; i<MAXCHILDREN; i++){
+			if(icode->child[i] != NULL && icode->child[i]->isCopy != 1){
+				rightmostNode = icode->child[i];
+			}
+		}
+		return get_tailNode(rightmostNode);
+	}
+	return NULL;
+}
+
+void tag_isTailRecursion(TreeNode *icode, std::string functionname){
+	if(icode == NULL)
+		return;
+	if(icode->op == ID && icode->type == DATATYPE_FUNC && strcmp(icode->id, functionname.c_str()) == 0){
+		icode->isTailRecursion = 1;
+	}
+}
+
+void tag_tailrecursion(TreeNode *icode, std::string functionname){
+	if(icode->op == IFSELECTION){
+		TreeNode *tailnode1 = get_tailNode(icode->child[1]);
+		TreeNode *tailnode2 = get_tailNode(icode->child[2]);
+		tag_isTailRecursion(tailnode1, functionname);
+		tag_isTailRecursion(tailnode2, functionname);
+	}else{
+		TreeNode *tailnode1 = get_tailNode(icode->child[1]);
+		tag_isTailRecursion(tailnode1, functionname);
+	}
+
+}
+
 void analyze_func(TreeNode* icode){
 	if(icode->child[0] == NULL || icode->child[0]->op != FUNCNODE){
 		cout << "error in function define" << endl;
@@ -750,6 +788,7 @@ void analyze_func(TreeNode* icode){
 	variableMap[functionname][SELFTEXT]->infer_type = new FunctionType;
 	analyze_parameters(icode);
 	analyzeExp(icode->child[0]->child[1], functionname);
+	tag_tailrecursion(icode->child[0]->child[1], functionname);
 	//update infer_type.
 	//update return_type
 	VarType *tmpType = new VarType;
@@ -760,7 +799,9 @@ void analyze_func(TreeNode* icode){
 	//update parameters_type
 	vector<VarType *>parameters = variableMap[functionname][SELFTEXT]->infer_type->parameterstype;
 	for(int i=0; i<parameters.size(); i++){
-		parameters[i]->dataType = variableMap[functionname + "_parameters"][parameters[i]->varid]->type;
+		if(strcmp(parameters[i]->varid, "") != 0){
+			parameters[i]->dataType = variableMap[functionname + "_parameters"][parameters[i]->varid]->type;
+		}
 	}
 }
 
@@ -811,8 +852,11 @@ void analyze_s_stmt(TreeNode* icode){
 				else if(variableMap[scopename][SELFTEXT]->type == DATATYPE_FUNC){
 					analyze_func(icode);
 				}
+				else if(icode->child[0]->op == ID && icode->child[0]->type == DATATYPE_FUNC){
+					//analyzeExp(icode->child[0], scopename);
+				}
 				else{
-					cerr << "type must be match" <<endl;
+					cerr << "type must be match: " << variableMap[scopename][SELFTEXT]->type <<endl;
 					exit(1);
 				}
 				functionCalleeMap[scopename] = icode->child[0];
@@ -953,16 +997,18 @@ void analyzeBlock(TreeNode* icode){
 		//variableMap[var_str][defaultName]->addr = ;
 		p = p->sibling;
 	}
-	analyze_s_stmt(icode->child[1]);
 	p = icode->child[0];	
 	//reverse the address.
 	while( p != NULL){
 		std::string scopename(p->id);
 		if(p->type != DATATYPE_FUNC){
-			variableMap[scopename][SELFTEXT]->addr = variableMap[scopename][SELFTEXT]->addr - gloablAddr + 2;
+			variableMap[scopename][SELFTEXT]->addr = variableMap[scopename][SELFTEXT]->addr - gloablAddr - 2;
 		}
 		p = p->sibling;
 	}
+	
+	analyze_s_stmt(icode->child[1]);
+
 	//output(icode);
 }
 

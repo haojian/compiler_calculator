@@ -1,0 +1,7 @@
+int x; 
+bool y; 
+fun check;
+check=fn(n)=>let m=n+1 in m>5 end;
+y = check(6);
+$y;
+%$check(6);

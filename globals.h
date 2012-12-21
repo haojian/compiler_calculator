@@ -95,6 +95,7 @@ typedef struct treeNode {
 	char comment[500];
 	int isCopy;
 	int isCall;
+	int isTailRecursion;
 } TreeNode;
 
 
